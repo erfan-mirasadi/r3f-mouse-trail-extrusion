@@ -35,7 +35,9 @@ const SHADER_CONFIG = {
 };
 
 export default function LogoExtrude() {
-  const logoMap = useTexture("./logo.svg");
+  const isProd = process.env.NODE_ENV === 'production';
+  const basePath = isProd ? '/r3f-mouse-trail-extrusion' : '';
+  const logoMap = useTexture(`${basePath}/logo.svg`);
   const { trailTexture, onPointerMove, onPointerOut } = useTrailTexture();
 
   // Get viewport dimensions to make the grid responsive
