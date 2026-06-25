@@ -1,6 +1,6 @@
 "use client";
+
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import LogoExtrude from "./LogoExtrude";
 import { Suspense } from "react";
 import { WebGPURenderer } from "three/webgpu";
@@ -24,7 +24,9 @@ export default function Scene() {
       >
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 10]} intensity={1.5} />
-        <OrbitControls enableDamping={true} />
+
+        {/* Removed OrbitControls to keep the camera completely fixed */}
+
         <Suspense fallback={null}>
           <LogoExtrude />
         </Suspense>

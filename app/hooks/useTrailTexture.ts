@@ -8,7 +8,7 @@ const TRAIL_CONFIG = {
   TEXTURE_SIZE: 512,
 
   // Radius of the brush (higher = wider trail area that extrudes)
-  BRUSH_SIZE: 0.15,
+  BRUSH_SIZE: 0.03,
 
   // How fast the trail fades out.
   // Lower value (e.g., 0.02) = Vertices fall down slower and much smoother.
@@ -87,10 +87,11 @@ export function useTrailTexture() {
 
     //  Draw continuous soft line
     ctx.save();
+    ctx.filter = "blur(30px)";
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.lineWidth = size * TRAIL_CONFIG.BRUSH_SIZE;
-    ctx.strokeStyle = "rgba(255, 255, 255, 1)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
 
     ctx.beginPath();
     if (prevMouse.current.x === currentMouse.current.x) {
