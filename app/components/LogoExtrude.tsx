@@ -2,70 +2,90 @@
 
 import { useMemo } from "react";
 import { useTexture } from "@react-three/drei";
-import * as THREE from "three";
 
-// Import all the necessary TSL nodes
-import { Fn, texture, uv, positionLocal, mix, vec3, vec4 } from "three/tsl";
+import {
+  Fn,
+  texture,
+  uv,
+  positionLocal,
+  mix,
+  vec3,
+  vec4,
+  smoothstep,
+} from "three/tsl";
 import { MeshStandardNodeMaterial } from "three/webgpu";
+import { useTrailTexture } from "../hooks/useTrailTexture";
+
+const SHADER_CONFIG = {
+  // Maximum height of the extrusion (higher = models pop out more)
+  MAX_EXTRUSION: 1.5,
+  // Inner edge of the gradient (lower = softness starts from the very edge of the brush)
+  SMOOTH_EDGE_INNER: 0.0,
+  // Outer edge of the gradient.
+  // Higher value (e.g., 0.8) = Much smoother, wider, and gradient-like rise/fall transition.
+  // Lower value (e.g., 0.2) = Sharp, harsh, and sudden extrusion edges.
+  SMOOTH_EDGE_OUTER: 0.8,
+};
 
 export default function LogoExtrude() {
-  // Load the logo texture from the public folder
-  // Note: For heightmaps, a high-contrast image (black background, white logo) is perfect
   const logoMap = useTexture("/logo.svg");
+  const { trailTexture, onPointerMove, onPointerOut } = useTrailTexture();
 
-  // Use useMemo to compile the material and shader only once
   const customMaterial = useMemo(() => {
-    // We use MeshStandardNodeMaterial to have proper lighting and shadow support
     const material = new MeshStandardNodeMaterial({
       color: 0xffffff,
       roughness: 0.4,
       metalness: 0.1,
     });
 
-    // Vertex Shader Logic: Modifying the geometry
     material.positionNode = Fn(() => {
-      // Read the texture color at the current UV coordinates
       const mapData = texture(logoMap, uv());
-
-      // We use the Red channel (r) as our height mask (0.0 = black, 1.0 = white)
       const heightMask = mapData.r;
 
-      // Calculate the new Z position using mix
-      // If black (0.0), Z stays at 0.0. If white (1.0), Z pushes out to 1.5
-      const extrudedZ = mix(0.0, 1.5, heightMask);
+      const trailData = texture(trailTexture, uv());
 
-      // Create a new position vector safely
+      // Using shader config for ultra smooth GPU gradients
+      const softTrailMask = smoothstep(
+        SHADER_CONFIG.SMOOTH_EDGE_INNER,
+        SHADER_CONFIG.SMOOTH_EDGE_OUTER,
+        trailData.r,
+      );
+
+      const finalMask = heightMask.mul(softTrailMask);
+
+      // Using shader config for max extrusion height
+      const extrudedZ = mix(0.0, SHADER_CONFIG.MAX_EXTRUSION, finalMask);
       const pos = vec3(positionLocal.x, positionLocal.y, extrudedZ);
 
       return pos;
     })();
 
-    // Fragment Shader Logic: Modifying the colors based on extrusion
     material.colorNode = Fn(() => {
       const mapData = texture(logoMap, uv());
+      const trailData = texture(trailTexture, uv());
 
-      // Let's create a cool effect:
-      // Flat parts are dark blue, extruded parts are bright cyan
+      const softTrailMask = smoothstep(
+        SHADER_CONFIG.SMOOTH_EDGE_INNER,
+        SHADER_CONFIG.SMOOTH_EDGE_OUTER,
+        trailData.r,
+      );
+
+      const finalMask = mapData.r.mul(softTrailMask);
+
       const flatColor = vec3(0.0, 0.1, 0.2);
       const extrudedColor = vec3(0.0, 0.8, 1.0);
 
-      // Blend between the two colors using the same mask
-      const finalColor = mix(flatColor, extrudedColor, mapData.r);
+      const finalColor = mix(flatColor, extrudedColor, finalMask);
 
       return vec4(finalColor, 1.0);
     })();
 
     return material;
-  }, [logoMap]);
+  }, [logoMap, trailTexture]);
 
   return (
-    <mesh>
-      {/* The Plane MUST have high segments (e.g., 256x256 or 512x512). 
-        If it's just 1x1, there are no vertices in the middle to pull forward!
-      */}
-      <planeGeometry args={[4, 4, 256, 256]} />
-
-      {/* Attach our TSL generated material */}
+    <mesh onPointerMove={onPointerMove} onPointerOut={onPointerOut}>
+      <planeGeometry args={[4, 4, 128, 128]} />
       <primitive object={customMaterial} attach="material" />
     </mesh>
   );
