@@ -35,8 +35,7 @@ const SHADER_CONFIG = {
 };
 
 export default function LogoExtrude() {
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-  const logoMap = useTexture(`${basePath}/logo.svg`);
+  const logoMap = useTexture("./logo.svg");
   const { trailTexture, onPointerMove, onPointerOut } = useTrailTexture();
 
   // Get viewport dimensions to make the grid responsive
